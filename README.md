@@ -8,13 +8,60 @@ MTCNA study is normally done against real MikroTik routers or in paid lab enviro
 
 Short answer: almost all of it. Longer answer is below — including the parts that didn't work on the first try, which turned out to be the more instructive part of the project.
 
-## Lab Architecture
+## Project Scope: Simulated Enterprise Network
+
+Rather than working through MTCNA's modules as isolated, disposable exercises, this lab is built as **one connected company network** that grows module by module — closer to what the certification is actually meant to prepare someone to run, and a more honest demonstration of applied skill than a series of unrelated configs.
+
+```mermaid
+graph TB
+    Internet((Real Internet<br/>via Hyper-V Default Switch)) --- HQ["HQ-Router<br/>NAT, Firewall, Inter-VLAN Routing"]
+    HQ --- IT["IT VLAN + DHCP"]
+    HQ --- Finance["Finance VLAN + DHCP"]
+    HQ --- HR["HR VLAN + DHCP"]
+    HQ --- Guest["Guest VLAN (isolated)"]
+    HQ --- DMZ["DMZ (strict inbound rules)"]
+    HQ ===|"Site-to-Site VPN Tunnel"| BR["Branch-Router"]
+    BR --- BranchLAN["Branch LAN + DHCP"]
+    IT --- ITPC["IT-PC (Alpine)"]
+    Finance --- FinPC["Finance-PC (Alpine)"]
+    HR --- HRPC["HR-PC (Alpine)"]
+    Guest --- GuestPC["Guest-PC (Alpine)"]
+    DMZ --- Server["DMZ-Server (Alpine)"]
+    BranchLAN --- BranchPC["Branch-PC (Alpine)"]
+```
+
+**Resources used to build it:**
+
+| Role | Implementation | Count |
+|---|---|---|
+| Routers | MikroTik CHR — the two already built for the initial setup are repurposed: `CHR-R1` becomes `HQ-Router`, `CHR-R2` becomes `Branch-Router` | 2 |
+| Client / server endpoints | Alpine Linux VMs (lightweight, free), added incrementally as each module needs one | up to 6 |
+| Switching | RouterOS bridging on CHR — a virtual lab has no dedicated switch-chip hardware, which is noted here as a known, honest gap rather than glossed over | — |
+| WAN | Hyper-V's Default Switch, giving `HQ-Router` a real DHCP-assigned address from the actual internet connection | — |
+
+**How each MTCNA module maps onto building it:**
+
+| Module | What it builds |
+|---|---|
+| 1. Introduction | `HQ-Router` identity, licensing, initial WAN/LAN configuration |
+| 2. DHCP | A DHCP server per VLAN (IT, Finance, HR, Guest, Branch) |
+| 3. Bridging | The VLAN segments themselves |
+| 4. Routing | Inter-VLAN routing on `HQ-Router`, static routes to the Branch |
+| 5. Wireless | Documented gap — needs physical hardware, not virtualizable |
+| 6. Firewall | DMZ lockdown, Guest isolation from internal VLANs, NAT |
+| 7. QoS | Per-VLAN bandwidth limits (e.g. Guest capped, IT prioritized) |
+| 8. Tunnels | The actual HQ ↔ Branch site-to-site VPN |
+| 9. Network Management | Monitoring and backups across the whole network |
+
+## Host Networking Setup
+
+The section below covers the underlying Hyper-V/Windows plumbing that the company network above actually runs on.
 
 ```mermaid
 graph LR
     Host["Windows 11 Host<br/>192.168.10.99"] ---|vEthernet<br/>LabLink1-Internal| Switch((Hyper-V<br/>Internal Switch))
-    Switch --- R1["CHR-R1<br/>RouterOS 7.24.3<br/>192.168.10.1"]
-    Switch --- R2["CHR-R2<br/>RouterOS 7.24.3<br/>192.168.10.2"]
+    Switch --- R1["CHR-R1 → HQ-Router<br/>RouterOS 7.24.3<br/>192.168.10.1"]
+    Switch --- R2["CHR-R2 → Branch-Router<br/>RouterOS 7.24.3<br/>192.168.10.2"]
 ```
 
 Two MikroTik Cloud Hosted Router (CHR) virtual machines, connected via a Hyper-V Internal virtual switch, managed from the host over Winbox — MikroTik's native GUI tool.
@@ -76,14 +123,14 @@ By default, Hyper-V's virtual switches don't let the host machine talk to the gu
 
 ## Roadmap
 
-- [ ] Module 1 — RouterOS software, licensing, initial configuration
-- [ ] Module 2 — Bridging
-- [ ] Module 3 — Routing (static routing between subnets)
-- [ ] Module 4 — DHCP
-- [ ] Module 5 — Wireless *(requires physical hardware — not virtualizable)*
-- [ ] Module 6 — Firewalls
-- [ ] Module 7 — QoS / Simple Queues
-- [ ] Module 8 — Tunnels (PPTP/L2TP/PPPoE)
+- [ ] Module 1 — Introduction (RouterOS software, licensing, `HQ-Router` initial setup)
+- [ ] Module 2 — DHCP (per-VLAN DHCP servers)
+- [ ] Module 3 — Bridging (IT / Finance / HR / Guest / DMZ segments)
+- [ ] Module 4 — Routing (inter-VLAN + HQ ↔ Branch static routing)
+- [ ] Module 5 — Wireless *(requires physical hardware — documented gap, not virtualizable)*
+- [ ] Module 6 — Firewall (DMZ lockdown, Guest isolation, NAT)
+- [ ] Module 7 — QoS (per-VLAN bandwidth limits)
+- [ ] Module 8 — Tunnels (HQ ↔ Branch site-to-site VPN)
 - [ ] Module 9 — Network Management (Torch, Netwatch, backups)
 
 ---
