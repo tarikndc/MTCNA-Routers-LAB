@@ -114,16 +114,28 @@ By default, Hyper-V's virtual switches don't let the host machine talk to the gu
 
 ![Winbox GUI connected to both routers](./screenshots/05-winbox-gui-connected.png)
 
+## Module 1 — Introduction ✅
+
+RouterOS identity, licensing, and all three real-world WAN types configured on `HQ-Router`: DHCP-client (real internet via Default Switch), Static/Manual (point-to-point `/30` link to a simulated ISP), and PPPoE-client (authenticated session with ISP-Sim acting as the server). NAT masquerade rule added. Routing table with multiple default routes examined and flag system understood.
+
+→ [Full Module 1 writeup](./modules/module-01-introduction.md)
+
+---
+
 ## Skills demonstrated
 
 - Virtualization troubleshooting (VBS/HVCI conflicts, nested virtualization limitations, hypervisor selection trade-offs)
 - Windows networking internals (virtual switches, network profile classification, firewall rules)
 - RouterOS fundamentals (interface identification, IP addressing, licensing)
 - Systematic debugging: diagnosing from symptom (failed ping) back to root cause (wrong interface) rather than guessing
+- WAN configuration: DHCP-client, Static/Manual, and PPPoE-client — all three real-world ISP connection types
+- NAT masquerade (srcnat rule enabling internal hosts to share a single public IP)
+- Routing table interpretation: reading RouterOS route flags (AS+, DAd, DAC) to understand active path selection
+- Simulated ISP setup: configured a CHR as a PPPoE server with user authentication — the ISP side of the connection
 
 ## Roadmap
 
-- [ ] Module 1 — Introduction (RouterOS software, licensing, `HQ-Router` initial setup)
+- [x] Module 1 — Introduction (RouterOS software, licensing, `HQ-Router` initial setup, all 3 WAN types)
 - [ ] Module 2 — DHCP (per-VLAN DHCP servers)
 - [ ] Module 3 — Bridging (IT / Finance / HR / Guest / DMZ segments)
 - [ ] Module 4 — Routing (inter-VLAN + HQ ↔ Branch static routing)
