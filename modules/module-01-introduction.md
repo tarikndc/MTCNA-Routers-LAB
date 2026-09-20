@@ -12,8 +12,13 @@
 *Most common for consumer broadband and ISP-CPE-behind-router setups.*
 
 - Added a network adapter on Hyper-V's **Default Switch** — gives HQ-Router a real, internet-facing DHCP lease
-- Configured **IP → DHCP Client** on `ether3` → status: `bound`, address assigned: `172.27.61.113/20`
+- Configured **IP → DHCP Client** on `ether3` → status: `bound`, address assigned: `172.26.48.210/20`
+
+![DHCP Client bound](../screenshots/07-dhcp-client-bound.png)
+
 - Added a **NAT masquerade** rule (`IP → Firewall → NAT`, chain: `srcnat`, out-interface: `ether3`, action: `masquerade`) — the single rule that allows all internal traffic to share one public IP
+
+![NAT masquerade rule](../screenshots/06-nat-masquerade-rule.png)
 - **Verified:** `ping 8.8.8.8` from HQ-Router's terminal replied successfully
 
 ---
@@ -50,11 +55,17 @@ ether1                 ether4
 - Dial Out tab → User: `hq-user`, Password: `hq-pass`, Add Default Route: ✓
 - **Result:** session connected (flag **R**, MTU 1492 — standard PPPoE MTU, 8 bytes lower than Ethernet's 1500 due to PPPoE header overhead)
 
+![PPPoE client connected](../screenshots/10-pppoe-connected.png)
+
 ---
 
 ## Routing table after Module 1
 
 `IP → Routes` on HQ-Router showed all three WAN methods simultaneously:
+
+![IP Addresses](../screenshots/08-ip-addresses-module1.png)
+
+![Routing table](../screenshots/09-routing-table-module1.png)
 
 | Flags | Destination | Gateway | Source |
 |---|---|---|---|
