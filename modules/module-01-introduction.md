@@ -88,7 +88,57 @@ ether1                 ether4
 
 ---
 
-## Real-world note: Dual-ISP failover
+## Module 1 Practice — Branch-Router
+
+After completing HQ-Router's configuration, the same Module 1 concepts were repeated on **Branch-Router** (`CHR-R2`) as hands-on reinforcement — this time with less guidance, to test understanding rather than follow steps.
+
+### What was different this time
+
+Branch-Router already had `192.168.10.2/24` on `ether1` (lab management/Winbox access). A second adapter was added to Hyper-V's `WAN-Sim-Link` switch — the same isolated switch ISP-Sim is connected to — giving Branch-Router its own simulated ISP link on `ether2`.
+
+**Key subnetting decision:** ISP-Sim's `ether1` already had `10.10.10.1/30` (for HQ-Router's static link). Since `/30` only has 2 usable addresses and both were taken, a new `/30` block was needed. The next clean block is `10.10.10.4/30`:
+- `10.10.10.5` → ISP-Sim's second address (added as a second IP on ether1)
+- `10.10.10.6` → Branch-Router's static WAN IP
+
+This demonstrates **subnet planning** — carving sequential `/30` blocks rather than picking addresses randomly.
+
+### Static WAN configuration
+
+- ISP-Sim: added `10.10.10.5/30` on `ether1` (multiple IPs on one interface — RouterOS supports this cleanly)
+- Branch-Router: added `10.10.10.6/30` on `ether2`
+- Default route added: Dst `0.0.0.0/0`, Gateway `10.10.10.5`
+- Verified with **Tools → Ping** to `10.10.10.5` — 11/11 packets, 0% loss
+
+![Branch-Router IP Addresses](../screenshots/11-branch-ip-addresses.png)
+
+![Branch-Router Routes](../screenshots/12-branch-routes.png)
+
+### PPPoE client configuration
+
+A separate PPPoE secret was created on ISP-Sim for Branch-Router (`branch-user` / `branch-pass`) — in real life every customer gets their own credentials, not shared ones.
+
+![ISP-Sim branch-user secret](../screenshots/15-isp-sim-branch-secret.png)
+
+Branch-Router PPPoE client configured on `ether2`:
+
+![PPPoE General tab — connected](../screenshots/13-branch-pppoe-general.png)
+
+![PPPoE Dial Out tab — branch-user credentials](../screenshots/14-branch-pppoe-dialout.png)
+
+### NAT masquerade
+
+Added on Branch-Router's `ether2` (WAN-facing interface) — same logic as HQ-Router. Without this, nothing behind Branch-Router could reach beyond ISP-Sim even when the tunnel is up.
+
+![Branch-Router NAT masquerade](../screenshots/16-branch-nat-masquerade.png)
+
+### What was learned from practice
+
+- **Default route** = `0.0.0.0/0` pointing to the gateway — "send everything I don't have a specific route for, here"
+- **NAT masquerade** = replaces private source IPs with the router's WAN IP so replies can find their way back
+- **`/30` subnet planning** = sequential blocks of 4 addresses, one block per point-to-point link, no overlap
+- RouterOS allows multiple IP addresses on a single physical interface — useful when one ISP port serves multiple customers
+
+---
 
 With two default routes in the table, the groundwork for dual-ISP failover is already visible. Full automatic failover when an ISP goes down requires:
 
