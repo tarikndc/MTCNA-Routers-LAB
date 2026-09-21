@@ -119,6 +119,32 @@ Once VLANs are built in Module 3, four DHCP servers will be configured on HQ-Rou
 | HR | 192.168.30.0/24 | .100-.200 | 192.168.30.1 | HR-DHCP |
 | Guest | 192.168.40.0/24 | .100-.200 | 192.168.40.1 | Guest-DHCP |
 
+## DHCP Setup Wizard
+
+RouterOS includes a **DHCP Setup Wizard** that configures all three components (Pool, Network, Server) in one guided flow — faster than the manual three-step process for initial setup.
+
+**Location:** IP → DHCP Server → **DHCP Setup** (right-hand Actions panel)
+
+The wizard walks through:
+1. Select interface → `ether2`
+2. DHCP address space → auto-detects `192.168.10.0/24`
+3. Gateway → auto-fills `192.168.10.1`
+4. Address pool range
+5. DNS servers → `8.8.8.8`
+6. Lease time → 30 minutes
+
+![DHCP Setup Wizard — interface selection](../screenshots/23-dhcp-wizard-start.png)
+
+Since IT-DHCP already existed on ether2, the wizard correctly warned against creating a duplicate:
+
+![DHCP wizard duplicate warning](../screenshots/24-dhcp-wizard-duplicate-warning.png)
+
+**Key point:** RouterOS prevents two DHCP servers from running on the same interface — the warning "DHCP server with such interface and relay already exists" is a built-in protection against accidental rogue DHCP server creation.
+
+**DHCP Relay** (shown as an optional step in the wizard): forwards DHCP broadcasts from remote subnets to a central DHCP server across a routed network. Used in large enterprises with one central DHCP server serving multiple remote segments. Not needed in our lab since HQ-Router is directly on the same segment as clients.
+
+---
+
 ## Key lessons
 
 - DHCP requires **three components** — pool, network, and server — all three must be configured
