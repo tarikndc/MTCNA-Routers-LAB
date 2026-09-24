@@ -136,8 +136,20 @@ RouterOS identity, licensing, and all three real-world WAN types configured on `
 ## Roadmap
 
 - [x] Module 1 — Introduction (RouterOS software, licensing, `HQ-Router` initial setup, all 3 WAN types)
-- [ ] Module 2 — DHCP (per-VLAN DHCP servers)
-- [ ] Module 3 — Bridging (IT / Finance / HR / Guest / DMZ segments)
+## Module 2 — DHCP ✅
+
+DHCP server configured on HQ-Router for the IT subnet (`192.168.10.0/24`) — address pool (`192.168.10.100-.200`), DHCP network (gateway + DNS), and server instance on ether2. Verified end-to-end with Branch-Router as a temporary test client. Full per-department DHCP (Finance, HR, Guest) will be completed after Module 3 sets up the VLAN segments.
+
+→ [Full Module 2 writeup](./modules/module-02-dhcp.md)
+
+---
+## Module 3 — Bridging & VLANs ✅
+
+Bridge created on HQ-Router, four department switches added as bridge ports (IT, Finance, HR, Guest), VLAN filtering enabled, VLAN interfaces created for each department with dedicated IPs and DHCP servers. Inter-VLAN routing and internet access verified end-to-end.
+
+→ [Full Module 3 writeup](./modules/module-03-bridging.md)
+
+---
 - [ ] Module 4 — Routing (inter-VLAN + HQ ↔ Branch static routing)
 - [ ] Module 5 — Wireless *(requires physical hardware — documented gap, not virtualizable)*
 - [ ] Module 6 — Firewall (DMZ lockdown, Guest isolation, NAT)
