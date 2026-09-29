@@ -63,23 +63,23 @@ A connected route makes a router treat every address in that network as local. I
 - a static default route `0.0.0.0/0` via `10.10.10.1` (ISP-Sim)
 - connected (DAc) routes for `192.168.10.0/24` and the four VLAN networks
 
-![HQ routing table](screenshots/35-hq-routing-table.png)
+![HQ routing table](../screenshots/35-hq-routing-table.png)
 
 ### 3.2 Find the problem: Branch shares subnets with HQ
 In Module 3 Branch-Router was given `.2` test addresses on ether3–ether6 to test the department VLANs. That made it act like a device on HQ's VLANs instead of a separate office, and its networks overlap with HQ's.
 
-![Branch address table before changes](screenshots/36-branch-address-table-before.png)
+![Branch address table before changes](../screenshots/36-branch-address-table-before.png)
 
 ### 3.3 Give Branch its own LAN subnet
 Chosen Branch LAN: **192.168.50.0/24**, which is not used anywhere else in the lab.
 
 On Branch-Router, **IP → Addresses**: changed ether3 from `192.168.11.2/24` to `192.168.50.1/24`.
 
-![Branch ether3 new address](screenshots/37-branch-ether3-new-address.png)
+![Branch ether3 new address](../screenshots/37-branch-ether3-new-address.png)
 
 RouterOS immediately added a connected route (**DAc**) for `192.168.50.0/24`.
 
-![Branch connected route for 192.168.50.0/24](screenshots/38-branch-connected-route-50.png)
+![Branch connected route for 192.168.50.0/24](../screenshots/38-branch-connected-route-50.png)
 
 ### 3.4 Static route on HQ-Router to the Branch LAN
 **IP → Routes → +** on HQ-Router:
@@ -91,12 +91,12 @@ RouterOS immediately added a connected route (**DAc**) for `192.168.50.0/24`.
 
 `192.168.10.2` is in the same subnet as HQ's own `192.168.10.1/24`, so it satisfies the gateway rule. The route shows flags **AS** (active, static).
 
-![HQ static route to Branch LAN](screenshots/39-hq-static-route-50.png)
+![HQ static route to Branch LAN](../screenshots/39-hq-static-route-50.png)
 
 ### 3.5 Verify from HQ-Router
 Ping to the Branch LAN gateway: 11 sent, 11 received, 0% packet loss.
 
-![HQ ping to 192.168.50.1](screenshots/40-hq-ping-branch-lan.png)
+![HQ ping to 192.168.50.1](../screenshots/40-hq-ping-branch-lan.png)
 
 The reply found its way back without any added route on Branch, because the ping's source address (`192.168.10.1`) is on ether1, a network Branch is directly attached to.
 
@@ -124,7 +124,7 @@ Before adding the route, Branch-Router already reached `192.168.11.1`:
 
 Branch had a **DHCP-learned default route** (`0.0.0.0/0`, flags **DAd+**) through HQ's Guest VLAN gateway `192.168.40.1`, installed by a DHCP client on ether6. Packets with no specific route were sent there, and HQ delivered them.
 
-![Branch default route from DHCP](screenshots/41-branch-dhcp-default-route.png)
+![Branch default route from DHCP](../screenshots/41-branch-dhcp-default-route.png)
 
 Added a specific static route on Branch-Router:
 
@@ -133,7 +133,7 @@ Added a specific static route on Branch-Router:
 | Dst. Address | 192.168.11.0/24 |
 | Gateway | 192.168.10.1 |
 
-![Branch static route to 192.168.11.0/24](screenshots/42-branch-static-route-11.png)
+![Branch static route to 192.168.11.0/24](../screenshots/42-branch-static-route-11.png)
 
 Checked again:
 
@@ -146,7 +146,7 @@ Checked again:
 
 The `/24` static route is more specific than the `/0` default route, so Branch now uses ether1 via `192.168.10.1`.
 
-![Branch route check after static route](screenshots/43-branch-route-check-after.png)
+![Branch route check after static route](../screenshots/43-branch-route-check-after.png)
 
 ---
 
