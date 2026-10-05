@@ -1,0 +1,193 @@
+# Module 6 – Firewall and NAT
+
+**Goal:** Protect HQ-Router with filter rules, let private networks reach the internet with source NAT, publish an inside service with destination NAT, and design a DMZ.
+
+**Lab:** HQ-Router (CHR-R1), Branch-Router (CHR-R2) and ISP-Sim (CHR-R3) on Hyper-V, configured through Winbox (connected by MAC address, which is not affected by IP firewall rules).
+
+---
+
+## 1. Concepts
+
+### Chains
+RouterOS checks every packet in one of three places, called chains:
+
+| Chain | Traffic | Example from the lab |
+|---|---|---|
+| **input** | Addressed **to** the router | Winbox session to HQ-Router |
+| **forward** | Passing **through** the router | A Finance PC pinging 8.8.8.8 |
+| **output** | **Started by** the router | A ping typed in HQ-Router's terminal |
+
+A ping started by the router uses **output** for the request and **input** for the reply. A ping from a PC through the router uses **forward** in both directions.
+
+### Rules
+A firewall rule has a **chain**, **match conditions** and an **action** (accept, drop, and so on). Rules are checked from top to bottom, and the first match wins. With no rules, every packet is accepted.
+
+### Connection state
+`established` and `related` match packets that belong to a conversation the router already knows about, such as the reply to a ping the router sent. `new` matches the first packet of a conversation.
+
+### NAT
+NAT rewrites addresses instead of allowing or blocking.
+- **srcnat** (masquerade) handles traffic **leaving** the network and rewrites the **source** address.
+- **dstnat** handles traffic **arriving** from outside and rewrites the **destination** address and port.
+
+A NAT rule is only evaluated for the first packet of a connection. The router remembers the rewrite and applies it to the rest of the connection, so a rule's packet counter shows 1 for a whole ping run.
+
+---
+
+## 2. Filter rules on HQ-Router
+
+HQ-Router started with no filter rules, so it accepted everything. Two rules now protect the router from the ISP side (ether4):
+
+| # | Chain | Match | Action |
+|---|---|---|---|
+| 0 | input | connection state: established, related | accept |
+| 1 | input | in. interface: ether4 | drop |
+
+Rule 0 must sit above rule 1. Replies to connections the router started are accepted first, and new connections arriving on ether4 fall through to the drop rule.
+
+![HQ filter rules](../screenshots/44-hq-filter-rules-input.png)
+
+![Rule 0 with established and related ticked](../screenshots/45-hq-filter-rule0-established-related.png)
+
+### Tests
+
+| Test | Result | Why |
+|---|---|---|
+| HQ-Router pings 10.10.10.1 (ISP-Sim) | Replies | HQ started it, so the replies are established and rule 0 accepts them |
+| ISP-Sim pings 10.10.10.2 (HQ ether4) | No replies | A new connection arriving on ether4 is dropped by rule 1 |
+| Rule 0 disabled, HQ-Router pings 10.10.10.1 | Timeouts | The replies arrive on ether4, match no accept rule and are dropped by rule 1 |
+| Rule 0 enabled again | Replies | Replies match rule 0 again |
+
+A disabled rule stays in the list but the router skips it.
+
+---
+
+## 3. Source NAT (masquerade)
+
+HQ-Router's existing masquerade rule was set to leave through **ether3**, left over from Module 3 when ether3 was the WAN. The link to ISP-Sim is now **ether4** (`10.10.10.2/30`), and ether3 has no address, so the rule never matched internet-bound traffic.
+
+![Masquerade rule before the change, out interface ether3](../screenshots/46-hq-nat-masquerade-before.png)
+
+![HQ addresses and interfaces: ether4 is the ISP link, ether3 has no address](../screenshots/48-hq-addresses-interfaces.png)
+
+Rule settings:
+
+| Field | Value |
+|---|---|
+| Chain | srcnat |
+| Out. Interface | ether4 |
+| Action | masquerade |
+
+![Masquerade action](../screenshots/47-hq-nat-masquerade-action.png)
+
+### Why it is needed
+ISP-Sim has no route to private networks like `192.168.20.0/24`. Masquerade replaces the private source address with ether4's own address (`10.10.10.2`), which ISP-Sim is directly attached to, so replies can come back. The router then swaps the address back for the original sender.
+
+### Test
+With the rule's counters reset:
+
+```
+/ping 10.10.10.1 src-address=192.168.20.1 count=5
+```
+
+The rule's counter went from 0 to **56 B / 1 packet**, confirming the rule matched.
+
+![NAT rule counters before the test](../screenshots/49-hq-nat-rule-counters-before-test.png)
+
+![NAT rule counters after the test](../screenshots/50-hq-nat-rule-counters-after-test.png)
+
+---
+
+## 4. Destination NAT (publishing an inside service)
+
+Goal: let the ISP side reach the web service on Branch-Router (`192.168.10.2`, `www` enabled on port 80) through HQ-Router's address.
+
+Rule on HQ-Router:
+
+| Tab | Field | Value |
+|---|---|---|
+| General | Chain | dstnat |
+| General | Protocol | tcp |
+| General | Dst. Port | 8080 |
+| General | In. Interface | ether4 |
+| Action | Action | dst-nat |
+| Action | To Addresses | 192.168.10.2 |
+| Action | To Ports | 80 |
+
+Visitors use port **8080** on HQ's address. HQ-Router passes the connection to port **80** on Branch. Port 8080 was chosen to keep the two ports distinct and to avoid clashing with HQ's own web service on port 80.
+
+![dstnat rule, General tab](../screenshots/51-hq-dstnat-rule-general.png)
+
+![dstnat rule, Action tab](../screenshots/52-hq-dstnat-rule-action.png)
+
+### Test
+From ISP-Sim's console:
+
+```
+/tool fetch url=http://10.10.10.2:8080/
+```
+
+The status was **finished**, and the dstnat rule's counter showed **60 B / 1 packet** (the first packet of the connection).
+
+![Fetch from ISP-Sim finished](../screenshots/53-isp-fetch-finished.png)
+
+After the rewrite, this traffic is **forward** traffic (it passes through HQ-Router to Branch), so the input drop rule on ether4 does not block it.
+
+---
+
+## 5. DMZ design
+
+A server that outsiders can reach should not sit on the same network as internal systems or management interfaces. A DMZ is a separate zone for such servers.
+
+| Direction | Allowed? |
+|---|---|
+| Internet to DMZ | Yes, only the published service |
+| Internal to DMZ | Yes |
+| DMZ to internal | **No** |
+
+The dangerous direction is DMZ to internal: if the server is compromised, the attacker must not be able to reach the internal networks.
+
+### Implemented
+ether3, which had no address, was given `192.168.60.1/24` as the DMZ network. The connected route appears automatically but stays inactive (flags include **D**, **C** and **I**) until a device is connected, and it would disappear if the address were removed.
+
+![DMZ address and connected route](../screenshots/54-hq-dmz-address-route.png)
+
+### Designed, not yet tested
+No server or test device exists on ether3 or on the department VLANs, so these rules are designed but have not been verified:
+
+| # | Chain | Match | Action |
+|---|---|---|---|
+| A | forward | connection state: established, related | accept |
+| B | forward | src. address 192.168.60.0/24, dst. address 192.168.0.0/16 | drop |
+
+Rule A sits above rule B so replies to staff connections still work. A DMZ server can still reach the internet because rule B only matches destinations inside `192.168.0.0/16`.
+
+Moving the dstnat rule to a DMZ server means changing only **To Addresses** on the Action tab to the server's address (for example `192.168.60.10`). The match settings on the General tab stay the same. This was not applied, so the working test to Branch stays intact.
+
+The same pattern (accept established/related, then drop the new connections) also works between VLANs, for example to stop the Guest VLAN (`192.168.40.0/24`) from starting connections to Finance (`192.168.20.0/24`). That was explained but not configured.
+
+---
+
+## 6. Troubleshooting and lessons learned
+
+| Issue | What happened | Lesson |
+|---|---|---|
+| Typo in a ping target | `ping 101.10.10.1` returned "net unreachable" | Check the address before blaming the firewall |
+| Masquerade on the wrong interface | The rule named ether3, but internet traffic leaves through ether4 | Masquerade only touches packets leaving through the interface named in the rule |
+| Counter showed 1 for five pings | NAT rules only see the first packet of a connection | Check counters after resetting them, and expect low numbers |
+| Winbox lockout risk | Dropping all input on ether4 could cut off an IP-based session | Connecting by MAC address is not affected by IP firewall rules, and Safe Mode adds protection |
+| Plain drop rules break replies | A drop rule between zones also drops replies | Put an established/related accept rule above the drop |
+
+---
+
+## 7. Summary
+- Three chains: input (to the router), forward (through it), output (from it).
+- Rules are checked top to bottom, and the first match wins; with no rules everything is accepted.
+- An established/related accept rule above a drop rule keeps replies working.
+- Masquerade (srcnat) rewrites the source of outgoing traffic so replies can return.
+- dstnat rewrites the destination of incoming traffic so outsiders can reach an inside service.
+- A DMZ keeps public servers in their own zone, with DMZ-to-internal traffic blocked.
+
+## 8. Still to do
+- Test the DMZ and VLAN forward rules with a device connected to ether3 and to the department VLANs.
+- Move the dstnat rule to a DMZ server.
