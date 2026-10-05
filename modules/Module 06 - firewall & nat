@@ -1,4 +1,4 @@
-# Module 7 – Firewall and NAT
+# Module 6 – Firewall and NAT
 
 **Goal:** Protect HQ-Router with filter rules, let private networks reach the internet with source NAT, publish an inside service with destination NAT, and design a DMZ.
 
