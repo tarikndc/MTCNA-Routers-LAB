@@ -15,7 +15,7 @@ To prevent Guest network users from saturating the WAN link, we implemented a Si
 * **Burst Threshold:** 256k Upload / 1500k Download
 * **Burst Time:** 16s / 16s
 
-![Guest Queue Burst Settings](screenshots/69-guest-queue-burst-settings.png)
+![Guest Queue Burst Settings](/screenshots/69-guest-queue-burst-settings.png)
 
 ### Testing the Burst Queue
 
