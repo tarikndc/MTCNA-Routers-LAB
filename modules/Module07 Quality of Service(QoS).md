@@ -21,7 +21,7 @@ To prevent Guest network users from saturating the WAN link, we implemented a Si
 
 We validated the queue using the RouterOS Bandwidth Test tool. By forcing UDP traffic from the Guest subnet to the router, we successfully triggered the burst limits. The router allowed the initial 4M burst, and once the 16-second average crossed the 1.5M threshold, it successfully clamped the traffic down to the 2M Max Limit.
 
-![Guest Queue Traffic Test](screenshots/70-guest-queue-traffic-test.png)
+![Guest Queue Traffic Test](/screenshots/70-guest-queue-traffic-test.png)
 
 ## 2. Per Connection Queue (PCQ) (IT Network)
 
@@ -33,16 +33,16 @@ We created custom Queue Types to classify the traffic streams:
 * **PCQ-Download:** Classifies based on `Dst. Address`. This ensures every individual PC receiving data gets its own dedicated slice of download bandwidth.
 * **PCQ-Upload:** Classifies based on `Src. Address`. This ensures every individual PC sending data gets its own dedicated slice of upload bandwidth.
 
-![PCQ Types Created](screenshots/71-pcq-types-created.png)
+![PCQ Types Created](/screenshots/71-pcq-types-created.png)
 
 ### Step 2: Applying PCQ to the IT VLAN
 
 We created a new Simple Queue targeting the IT interface (`vlan10`) with a 10M/10M Max Limit. On the Advanced tab, we applied our custom PCQ Types.
 
-![IT Queue PCQ Applied](screenshots/72-it-queue-pcq-applied.png)
+![IT Queue PCQ Applied](/screenshots/72-it-queue-pcq-applied.png)
 
 ### Step 3: Verifying Dynamic Sub-Queues
 
 To prove PCQ fairness, we generated simulated IT traffic. By analyzing the queue statistics during the test, we verified that the router dynamically spawned a dedicated sub-queue (`PCQ Queues: 1`) specifically for that unique source IP address. If more users join, the router will automatically create additional queues and divide the 10 Mbps evenly.
 
-![PCQ Dynamic Queues Test](screenshots/73-pcq-dynamic-queues-test.png)
+![PCQ Dynamic Queues Test](/screenshots/73-pcq-dynamic-queues-test.png)
